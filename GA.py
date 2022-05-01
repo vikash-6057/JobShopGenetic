@@ -13,6 +13,16 @@ import json
 import chart_studio.plotly as py
 import plotly.figure_factory as ff
 
+# write data in excel sheet for minitab
+workbook = xl.Workbook()
+sheet = workbook.active
+c1 = sheet.cell(row=1,column=1)
+c1.value='Population'
+c2 = sheet.cell(row=1,column=2)
+c2.value='Iteration'
+c3 = sheet.cell(row=1,column=3)
+c3.value='Optimal Value'
+
 def data_excel_json(excel_sheet):
     """ convert excel into json """
     data_excel = xl.load_workbook(excel_sheet)
@@ -26,6 +36,7 @@ def data_excel_json(excel_sheet):
         df.index = df.iloc[:, 0]
         df.drop(columns = df.columns[0], inplace=True)
         data[sheet] = df.T.to_dict()
+    # print (data)
     return data
 
 def json_to_df(json_data):
@@ -38,20 +49,20 @@ def json_to_df(json_data):
 
 
 
-def generate_initial_population(population_size, num_gene):
+# def generate_initial_population(population_size, num_gene):
 
-    """ generate initial population for Genetic Algorithm """
+#     """ generate initial population for Genetic Algorithm """
 
-    best_list, best_obj = [], []
-    population_list = []
-    makespan_record = []
-    for i in range(population_size):
-        nxm_random_num = list(np.random.permutation(num_gene)) # generate a random permutation of 0 to num_job*num_mc-1
-        population_list.append(nxm_random_num) # add to the population_list
-        for j in range(num_gene):
-            population_list[i][j] = population_list[i][j] % num_job # convert to job number format, every job appears m times
+#     best_list, best_obj = [], []
+#     population_list = []
+#     makespan_record = []
+#     for i in range(population_size):
+#         nxm_random_num = list(np.random.permutation(num_gene)) # generate a random permutation of 0 to num_job*num_mc-1
+#         population_list.append(nxm_random_num) # add to the population_list
+#         for j in range(num_gene):
+#             population_list[i][j] = population_list[i][j] % num_job # convert to job number format, every job appears m times
 
-    return population_list
+#     return population_list
 
 
 
@@ -61,6 +72,8 @@ def job_schedule(data_dict, population_size = 30, crossover_rate = 0.8, mutation
     data_json  = json_to_df(data_dict)
     machine_sequence_tmp = data_json['Machines Sequence']
     process_time_tmp = data_json['Processing Time']
+    # print (machine_sequence_tmp)
+    # print(process_time_tmp)
 
     df_shape = process_time_tmp.shape
     num_machines = df_shape[1] # number of machines
@@ -89,7 +102,8 @@ def job_schedule(data_dict, population_size = 30, crossover_rate = 0.8, mutation
     for iteration in range(num_iteration):
         Tbest_now = 99999999999
 
-        """ Two Point Cross-Over """
+        """ Two Point Cross-Over """ 
+        #  TODO: 
         parent_list = copy.deepcopy(population_list)
         offspring_list = copy.deepcopy(population_list) # generate a random sequence to select the parent chromosome to crossover
         pop_random_size = list(np.random.permutation(population_size))
@@ -225,8 +239,9 @@ def job_schedule(data_dict, population_size = 30, crossover_rate = 0.8, mutation
 
     """ Results - Makespan """
 
-    print("optimal sequence", sequence_best)
-    print("optimal value:%f"%Tbest)
+    # print("optimal sequence", sequence_best)
+    # print("optimal value:%f"%Tbest)
+    print(f'Optimal value {Tbest} for Population size {population_size} and Number of  Iteration {num_iteration}')
     print("\n")
     #print('the elapsed time:%s'% (time.time() - start_time))
 
@@ -278,7 +293,7 @@ def job_schedule(data_dict, population_size = 30, crossover_rate = 0.8, mutation
 
     df_.Start = df_.Start.apply(lambda x: x.strftime('%Y-%m-%dT%H:%M:%S'))
     df_.Finish = df_.Finish.apply(lambda x: x.strftime('%Y-%m-%dT%H:%M:%S'))
-    data = df_.to_dict('record')
+    data = df_.to_dict('records')
 
     final_data ={
         'start':start.strftime('%Y-%m-%dT%H:%M:%S'),
@@ -286,14 +301,24 @@ def job_schedule(data_dict, population_size = 30, crossover_rate = 0.8, mutation
         'data':data}
         
     fig = ff.create_gantt(df, index_col='Resource', show_colorbar=True, group_tasks=True, showgrid_x=True, title='Job shop Schedule')
-    fig.show()
+    # fig.show()
     #iplot(fig, filename='GA_job_shop_scheduling')
-    return final_data, df
+    return final_data, df, Tbest
 data = data_excel_json('JSP_dataset.xlsx')
-schedule = job_schedule(data_dict=data)
 
-
-df = schedule[1]
-fig = ff.create_gantt(df, index_col='Resource', show_colorbar=True, group_tasks=True, showgrid_x=True, title='Job shop Schedule')
-fig.show()
-
+# NOTE: Check here for all permutation of population_size,num_iteration
+row_pop = 2
+for pop in range(1,10,5):
+    for iter in range(1,100,20):
+        c1 = sheet.cell(row=row_pop,column=1)
+        c1.value=pop
+        c2 = sheet.cell(row=row_pop,column=2)
+        c2.value=iter
+        schedule = job_schedule(data_dict=data,population_size=pop,num_iteration=iter)
+        c3 = sheet.cell(row=row_pop,column=3)
+        c3.value=schedule[2]
+        row_pop+=1
+        df = schedule[1]
+        fig = ff.create_gantt(df, index_col='Resource', show_colorbar=True, group_tasks=True, showgrid_x=True, title='Job shop Schedule')
+    # row_val+=1
+workbook.save('test.xlsx')
