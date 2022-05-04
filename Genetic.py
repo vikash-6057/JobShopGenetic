@@ -12,7 +12,7 @@ import openpyxl as xl
 import json
 import chart_studio.plotly as py
 import plotly.figure_factory as ff
-
+import fileinput
 def data_excel_json(excel_sheet):
     """ convert excel into json """
     data_excel = xl.load_workbook(excel_sheet)
@@ -36,26 +36,7 @@ def json_to_df(json_data):
 
     return dict_data
 
-
-
-def generate_initial_population(population_size, num_gene):
-
-    """ generate initial population for Genetic Algorithm """
-
-    best_list, best_obj = [], []
-    population_list = []
-    makespan_record = []
-    for i in range(population_size):
-        nxm_random_num = list(np.random.permutation(num_gene)) # generate a random permutation of 0 to num_job*num_mc-1
-        population_list.append(nxm_random_num) # add to the population_list
-        for j in range(num_gene):
-            population_list[i][j] = population_list[i][j] % num_job # convert to job number format, every job appears m times
-
-    return population_list
-
-
-
-def job_schedule(data_dict, population_size = 30, crossover_rate = 0.8, mutation_rate = 0.2, mutation_selection_rate = 0.2, num_iteration = 2000):
+def job_schedule(data_dict, population_size = 30, crossover_rate = 0.7, mutation_rate = 0.3, mutation_selection_rate = 0.3, num_iteration = 2000):
 
     """ initialize genetic algorithm parameters and read data """
     data_json  = json_to_df(data_dict)
@@ -267,8 +248,8 @@ def job_schedule(data_dict, population_size = 30, crossover_rate = 0.8, mutation
     df = []
     for m in m_keys:
         for j in j_keys:
-            df.append(dict(Task='Machine %s'%(m), Start='2020-02-01 %s'%(str(j_record[(j,m)][0])), \
-                            Finish='2020-02-01 %s'%(str(j_record[(j,m)][1])),Resource='Job %s'%(j+1)))
+            df.append(dict(Task='Machine %s'%(m), Start='2022-05-06 %s'%(str(j_record[(j,m)][0])), \
+                            Finish='2022-05-06 %s'%(str(j_record[(j,m)][1])),Resource='Job %s'%(j+1)))
     
     df_ = pd.DataFrame(df)
     df_.Start = pd.to_datetime(df_['Start'])
@@ -278,22 +259,22 @@ def job_schedule(data_dict, population_size = 30, crossover_rate = 0.8, mutation
 
     df_.Start = df_.Start.apply(lambda x: x.strftime('%Y-%m-%dT%H:%M:%S'))
     df_.Finish = df_.Finish.apply(lambda x: x.strftime('%Y-%m-%dT%H:%M:%S'))
-    data = df_.to_dict('record')
+    data = df_.to_dict('records')
 
     final_data ={
         'start':start.strftime('%Y-%m-%dT%H:%M:%S'),
         'end':end.strftime('%Y-%m-%dT%H:%M:%S'),
         'data':data}
-        
-    fig = ff.create_gantt(df, index_col='Resource', show_colorbar=True, group_tasks=True, showgrid_x=True, title='Job shop Schedule')
-    fig.show()
-    #iplot(fig, filename='GA_job_shop_scheduling')
     return final_data, df
+
+# Take input optimal  population_size and optimal iteration as suggested by ANOVA
+population_size = int(input('Enter optimal population size\n'))
+num_iteration = int(input('Enter optimal number of iteration\n'))
+
 data = data_excel_json('JSP_dataset.xlsx')
-schedule = job_schedule(data_dict=data)
+schedule = job_schedule(data_dict=data,population_size=population_size,num_iteration=num_iteration)
 
 
 df = schedule[1]
 fig = ff.create_gantt(df, index_col='Resource', show_colorbar=True, group_tasks=True, showgrid_x=True, title='Job shop Schedule')
 fig.show()
-
